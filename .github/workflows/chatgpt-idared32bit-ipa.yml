@@ -111,6 +111,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 buildtools/idared_es_glass.py
+      - name: Fix NSBundle bundleWithPath for older games
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 buildtools/idared_nsbundle_fix.py
+          grep -q 'bundleWithPath:(id)path' source/src/frameworks/foundation/ns_bundle.rs
       - name: Install compatible CMake 3.31.6
         shell: bash
         run: |
@@ -153,14 +159,14 @@ jobs:
           file "$app/$binary"
           mkdir -p dist/Payload
           ditto "$app" "dist/Payload/$(basename "$app")"
-          (cd dist && zip -qry iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa Payload)
-          unzip -t dist/iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa | tail -n 1
-          test -s dist/iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa
+          (cd dist && zip -qry iDared32bit-v1.3.0-es-negro-nsbundle-fix-unsigned.ipa Payload)
+          unzip -t dist/iDared32bit-v1.3.0-es-negro-nsbundle-fix-unsigned.ipa | tail -n 1
+          test -s dist/iDared32bit-v1.3.0-es-negro-nsbundle-fix-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned
-          path: dist/iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa
+          name: iDared32bit-v1.3.0-es-negro-nsbundle-fix-unsigned
+          path: dist/iDared32bit-v1.3.0-es-negro-nsbundle-fix-unsigned.ipa
           if-no-files-found: error
           retention-days: 3
       - name: Upload build logs if failed
