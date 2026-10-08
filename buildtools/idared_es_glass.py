@@ -142,7 +142,7 @@ fn save_quick_settings(settings: SavedQuickSettings) {
     let scale = settings.scale_hack.map(|v| v.get().to_string())
         .unwrap_or_else(|| "default".to_string());
     let contents = format!(
-        "scale={}\\\norientation={}\\\ntilt={}\\\nnetwork={}\\\nfullscreen={}\\\n",
+        "scale={}\\norientation={}\\ntilt={}\\nnetwork={}\\nfullscreen={}\\n",
         scale, orientation, settings.analog_stick_tilt_controls,
         settings.network, settings.fullscreen,
     );
