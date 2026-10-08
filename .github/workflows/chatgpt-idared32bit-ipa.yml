@@ -16,6 +16,94 @@ jobs:
           set -euo pipefail
           git clone --depth 1 --recurse-submodules --branch v1.3.0 https://github.com/iDared32bit-emu/iDared32bit.git source
           git -C source rev-parse HEAD | tee SOURCE_COMMIT.txt
+      - name: Patch NSDateFormatter timezone support
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("source/src/frameworks/foundation/ns_date_formatter.rs")
+          src = p.read_text()
+          def substitute(old, new):
+              global src
+              count = src.count(old)
+              assert count == 1, f"Expected one match, got {count}: {old[:90]!r}"
+              src = src.replace(old, new, 1)
+          
+          substitute(
+              "use crate::objc::{autorelease, id, msg, nil, objc_classes, ClassExports, HostObject, NSZonePtr};",
+              "use crate::objc::{autorelease, id, msg, msg_class, nil, objc_classes, release, retain, ClassExports, HostObject, NSZonePtr};"
+          )
+          substitute(
+              "    date_format: Option<id>,\n}",
+              "    date_format: Option<id>,\n    time_zone: id,\n}"
+          )
+          substitute(
+              "        date_format: None,\n",
+              "        date_format: None,\n        time_zone: nil,\n"
+          )
+          substitute(
+              "- (())setDateFormat:(id)format { // NSString *",
+              """- (())dealloc {
+              let (date_format, time_zone) = {
+                  let state = env.objc.borrow::<NSDateFormatterHostObject>(this);
+                  (state.date_format, state.time_zone)
+              };
+              if let Some(date_format) = date_format {
+                  release(env, date_format);
+              }
+              if time_zone != nil {
+                  release(env, time_zone);
+              }
+              env.objc.dealloc_object(this, &mut env.mem)
+          }
+          
+          // Minimal implementation for games that configure NSDateFormatter timezone.
+          // NSTimeZone currently reports GMT for all zones in iDared 32bit.
+          - (())setTimeZone:(id)time_zone { // NSTimeZone *
+              if time_zone != nil {
+                  retain(env, time_zone);
+              }
+              let previous = std::mem::replace(
+                  &mut env.objc.borrow_mut::<NSDateFormatterHostObject>(this).time_zone,
+                  time_zone,
+              );
+              if previous != nil {
+                  release(env, previous);
+              }
+          }
+          
+          - (id)timeZone {
+              let stored = env.objc.borrow::<NSDateFormatterHostObject>(this).time_zone;
+              if stored == nil {
+                  msg_class![env; NSTimeZone defaultTimeZone]
+              } else {
+                  stored
+              }
+          }
+          
+          - (())setDateFormat:(id)format { // NSString *"""
+          )
+          substitute(
+              """    let &NSDateFormatterHostObject {
+                  date_format
+              } = env.objc.borrow(this);""",
+              """    let (date_format, time_zone) = {
+                  let state = env.objc.borrow::<NSDateFormatterHostObject>(this);
+                  (state.date_format, state.time_zone)
+              };"""
+          )
+          substitute(
+              "    let greg_date = CFAbsoluteTimeGetGregorianDate(env, ti, nil);",
+              """    let offset: i32 = if time_zone == nil {
+                  0
+              } else {
+                  msg![env; time_zone secondsFromGMT]
+              };
+              let greg_date = CFAbsoluteTimeGetGregorianDate(env, ti + f64::from(offset), nil);"""
+          )
+          p.write_text(src)
+          print("Applied NSDateFormatter.setTimeZone: compatibility patch")
+          PY
       - name: Install compatible CMake 3.31.6
         shell: bash
         run: |
@@ -58,14 +146,14 @@ jobs:
           file "$app/$binary"
           mkdir -p dist/Payload
           ditto "$app" "dist/Payload/$(basename "$app")"
-          (cd dist && zip -qry iDared32bit-v1.3.0-unsigned.ipa Payload)
-          unzip -t dist/iDared32bit-v1.3.0-unsigned.ipa | tail -n 1
-          test -s dist/iDared32bit-v1.3.0-unsigned.ipa
+          (cd dist && zip -qry iDared32bit-v1.3.0-timezone-fix-unsigned.ipa Payload)
+          unzip -t dist/iDared32bit-v1.3.0-timezone-fix-unsigned.ipa | tail -n 1
+          test -s dist/iDared32bit-v1.3.0-timezone-fix-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: iDared32bit-v1.3.0-unsigned
-          path: dist/iDared32bit-v1.3.0-unsigned.ipa
+          name: iDared32bit-v1.3.0-timezone-fix-unsigned
+          path: dist/iDared32bit-v1.3.0-timezone-fix-unsigned.ipa
           if-no-files-found: error
           retention-days: 3
       - name: Upload build logs if failed
