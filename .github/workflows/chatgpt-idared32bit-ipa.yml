@@ -16,6 +16,17 @@ jobs:
           set -euo pipefail
           git clone --depth 1 --recurse-submodules --branch v1.3.0 https://github.com/iDared32bit-emu/iDared32bit.git source
           git -C source rev-parse HEAD | tee SOURCE_COMMIT.txt
+      - name: Install compatible CMake 3.31.6
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -o "${RUNNER_TEMP}/cmake-3.31.6.tar.gz" https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-macos-universal.tar.gz
+          mkdir -p "${RUNNER_TEMP}/cmake-3.31"
+          tar -xzf "${RUNNER_TEMP}/cmake-3.31.6.tar.gz" -C "${RUNNER_TEMP}/cmake-3.31"
+          cmake_bin="${RUNNER_TEMP}/cmake-3.31/cmake-3.31.6-macos-universal/CMake.app/Contents/bin"
+          test -x "${cmake_bin}/cmake"
+          echo "${cmake_bin}" >> "${GITHUB_PATH}"
+          "${cmake_bin}/cmake" --version
       - name: Prepare iOS build tools
         shell: bash
         run: |
