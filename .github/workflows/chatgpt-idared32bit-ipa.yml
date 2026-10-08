@@ -10,6 +10,8 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 120
     steps:
+      - name: Checkout Spanish build patch
+        uses: actions/checkout@v4
       - name: Clone iDared 32bit official sources
         shell: bash
         run: |
@@ -104,6 +106,11 @@ jobs:
           p.write_text(src)
           print("Applied NSDateFormatter.setTimeZone: compatibility patch")
           PY
+      - name: Translate and fix UI and settings (source-level)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 buildtools/idared_es_glass.py
       - name: Install compatible CMake 3.31.6
         shell: bash
         run: |
@@ -146,14 +153,14 @@ jobs:
           file "$app/$binary"
           mkdir -p dist/Payload
           ditto "$app" "dist/Payload/$(basename "$app")"
-          (cd dist && zip -qry iDared32bit-v1.3.0-timezone-fix-unsigned.ipa Payload)
-          unzip -t dist/iDared32bit-v1.3.0-timezone-fix-unsigned.ipa | tail -n 1
-          test -s dist/iDared32bit-v1.3.0-timezone-fix-unsigned.ipa
+          (cd dist && zip -qry iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa Payload)
+          unzip -t dist/iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa | tail -n 1
+          test -s dist/iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: iDared32bit-v1.3.0-timezone-fix-unsigned
-          path: dist/iDared32bit-v1.3.0-timezone-fix-unsigned.ipa
+          name: iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned
+          path: dist/iDared32bit-v1.3.0-es-glass-timezone-fix-unsigned.ipa
           if-no-files-found: error
           retention-days: 3
       - name: Upload build logs if failed
