@@ -10,22 +10,27 @@ assert src.count(anchor) == 1, "Expected one NSBundle mainBundle method"
 addition = """// Compatibility with older 32-bit apps that locate resource bundles by path.
 + (id)bundleWithPath:(id)path { // NSString *
     if path == nil {
+        log!("DIAGNOSTICO NSBundle.bundleWithPath: ruta nula -> nil");
         return nil;
     }
 
     let requested = ns_string::to_rust_string(env, path).into_owned();
     let requested = requested.trim_end_matches('/');
+    log!("DIAGNOSTICO NSBundle.bundleWithPath: solicitado {:?}", requested);
     if requested.is_empty() {
+        log!("DIAGNOSTICO NSBundle.bundleWithPath: ruta vacia -> nil");
         return nil;
     }
 
     // Always share the real main bundle instance, including its lifetime rules.
     if requested == env.bundle.bundle_path().as_str().trim_end_matches('/') {
+        log!("DIAGNOSTICO NSBundle.bundleWithPath: coincide con mainBundle");
         return msg_class![env; NSBundle mainBundle];
     }
 
     let guest_path = crate::fs::GuestPath::new(requested);
     if !env.fs.is_dir(guest_path) {
+        log!("DIAGNOSTICO NSBundle.bundleWithPath: carpeta inexistente -> nil: {:?}", requested);
         return nil;
     }
 
@@ -33,11 +38,17 @@ addition = """// Compatibility with older 32-bit apps that locate resource bundl
     let plist_path = guest_path.join("Info.plist");
     let plist_bytes = match env.fs.read(&plist_path) {
         Ok(bytes) => bytes,
-        Err(_) => return nil,
+        Err(_) => {
+            log!("DIAGNOSTICO NSBundle.bundleWithPath: sin Info.plist -> nil: {:?}", requested);
+            return nil;
+        },
     };
     let info = match plist::Value::from_reader(std::io::Cursor::new(plist_bytes)) {
         Ok(plist::Value::Dictionary(info)) => info,
-        _ => return nil,
+        _ => {
+            log!("DIAGNOSTICO NSBundle.bundleWithPath: Info.plist no valido -> nil: {:?}", requested);
+            return nil;
+        },
     };
 
     let identifier = info.get("CFBundleIdentifier")
@@ -61,6 +72,7 @@ addition = """// Compatibility with older 32-bit apps that locate resource bundl
         info_dictionary: None,
     };
     let instance = env.objc.alloc_object(this, Box::new(bundle), &mut env.mem);
+    log!("DIAGNOSTICO NSBundle.bundleWithPath: paquete creado {:?}, objeto {:?}", requested, instance);
     autorelease(env, instance)
 }
 
