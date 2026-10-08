@@ -1,0 +1,69 @@
+name: iDared 32bit IPA build (isolated)
+on:
+  push:
+    branches:
+      - chatgpt-idared32bit-build
+permissions:
+  contents: read
+jobs:
+  ios:
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - name: Clone iDared 32bit official sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --recurse-submodules --branch v1.3.0 https://github.com/iDared32bit-emu/iDared32bit.git source
+          git -C source rev-parse HEAD | tee SOURCE_COMMIT.txt
+      - name: Prepare iOS build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          cmake --version
+          rustc --version
+          rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+          xcodebuild -list -project source/iphone/touchHLE.xcodeproj
+      - name: Build unsigned iPhone app
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd source
+          set -o pipefail
+          xcodebuild -project iphone/touchHLE.xcodeproj -scheme 'iDared 32bit' -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "${GITHUB_WORKSPACE}/build" CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY='' DEVELOPMENT_TEAM='' build 2>&1 | tee "${GITHUB_WORKSPACE}/xcodebuild.log"
+      - name: Package IPA and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          products="${GITHUB_WORKSPACE}/build/Build/Products/Release-iphoneos"
+          app=$(find "$products" -maxdepth 1 -type d -name '*.app' -print -quit)
+          if [[ -z "$app" ]]; then
+            echo "ERROR: iOS app was not generated"
+            exit 1
+          fi
+          binary=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Info.plist")
+          test -s "$app/$binary"
+          file "$app/$binary"
+          mkdir -p dist/Payload
+          ditto "$app" "dist/Payload/$(basename "$app")"
+          (cd dist && zip -qry iDared32bit-v1.3.0-unsigned.ipa Payload)
+          unzip -t dist/iDared32bit-v1.3.0-unsigned.ipa | tail -n 1
+          test -s dist/iDared32bit-v1.3.0-unsigned.ipa
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: iDared32bit-v1.3.0-unsigned
+          path: dist/iDared32bit-v1.3.0-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 3
+      - name: Upload build logs if failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iDared32bit-build-logs
+          path: |
+            xcodebuild.log
+            SOURCE_COMMIT.txt
+          if-no-files-found: ignore
+          retention-days: 3
