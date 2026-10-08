@@ -38,9 +38,9 @@ replace_once('    for candidate in paths::WALLPAPER_FILES {',
 
 # Spanish UI labels (game titles and legal licence text remain untouched).
 translations = {
-    '"The {} directory couldn\\'t be found. Check you\\'re running touchHLE from the right directory."':
+    '"The {} directory couldn\'t be found. Check you\'re running touchHLE from the right directory."':
     '"No se encontró la carpeta {}. Comprueba la instalación de iDared."',
-    '"Couldn\\'t get list of apps in the {} directory: {}."':
+    '"Couldn\'t get list of apps in the {} directory: {}."':
     '"No se pudieron leer los juegos de la carpeta {}: {}."',
     '"No apps were found in the {} directory."':
     '"No se encontraron juegos en la carpeta {}."',
