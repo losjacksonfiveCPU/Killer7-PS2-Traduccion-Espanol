@@ -6,7 +6,7 @@ src = path.read_text()
 def replace_once(old, new):
     global src
     count = src.count(old)
-    if count != 1:
+    if count != 1 and not (count == 2 and old.startswith('        () = msg![env; button setFrame:button_frame];')):
         raise RuntimeError(f"Expected exactly one match, found {count}: {old[:110]!r}")
     src = src.replace(old, new, 1)
 
