@@ -13,9 +13,9 @@ def replace_once(old, new):
 # No binary manipulation: remove the visual watermark at source level.
 start = src.index('    let brand_color: id = if crate::branding() == "UNOFFICIAL" {')
 end = src.index('    let divider = app_frame.size.height - 100.0;', start)
-src = src[:start] + '    // Spanish glass edition: keep upstream branding data but never paint red watermark.\\n\\n' + src[end:]
+src = src[:start] + '    // Spanish glass edition: keep upstream branding data but never paint red watermark.\n\n' + src[end:]
 
-start = src.index('        let text = ns_string::from_rust_string(\\n            env,\\n            format!(\\n                "iDared 32bit {}{}{}",')
+start = src.index('        let text = ns_string::from_rust_string(\n            env,\n            format!(\n                "iDared 32bit {}{}{}",')
 end = src.index('        () = msg![env; label setText:text];', start)
 src = src[:start] + '''        let text = ns_string::from_rust_string(
             env,
@@ -25,7 +25,7 @@ src = src[:start] + '''        let text = ns_string::from_rust_string(
 
 # Black backdrop, never read an optional old wallpaper from the data directory.
 replace_once(
-    '    // Wallpaper\\n',
+    '    // Wallpaper\n',
     '''    // Black backdrop without binary modifications or an external wallpaper.
     let black: id = msg_class![env; UIColor blackColor];
     () = msg![env; main_view setBackgroundColor:black];
@@ -62,7 +62,7 @@ for old, new in translations.items():
 
 # Subtle native pseudo-glass buttons (no dependency on a PNG in the IPA).
 replace_once(
-    '        () = msg![env; button setFrame:button_frame];\\n        // FIXME: manually calling layoutSubviews',
+    '        () = msg![env; button setFrame:button_frame];\n        // FIXME: manually calling layoutSubviews',
     '''        () = msg![env; button setFrame:button_frame];
         let translucent: id = msg_class![env; UIColor colorWithWhite:(0.22 as CGFloat) alpha:(0.72 as CGFloat)];
         () = msg![env; button setBackgroundColor:translucent];
@@ -142,7 +142,7 @@ fn save_quick_settings(settings: SavedQuickSettings) {
     let scale = settings.scale_hack.map(|v| v.get().to_string())
         .unwrap_or_else(|| "default".to_string());
     let contents = format!(
-        "scale={}\\\\norientation={}\\\\ntilt={}\\\\nnetwork={}\\\\nfullscreen={}\\\\n",
+        "scale={}\\\norientation={}\\\ntilt={}\\\nnetwork={}\\\nfullscreen={}\\\n",
         scale, orientation, settings.analog_stick_tilt_controls,
         settings.network, settings.fullscreen,
     );
@@ -152,10 +152,9 @@ fn save_quick_settings(settings: SavedQuickSettings) {
 }
 '''
 # The raw workflow step removes one escaping layer; normalize \n in Rust format only.
-settings_code = settings_code.replace('\\\\n', '\\n')
 replace_once(
-    'fn show_app_picker_gui(\\n',
-    settings_code + '\\nfn show_app_picker_gui(\\n'
+    'fn show_app_picker_gui(\n',
+    settings_code + '\nfn show_app_picker_gui(\n'
 )
 
 replace_once(
@@ -187,7 +186,7 @@ replace_once(
 )
 
 replace_once(
-    '        let host_obj = env.objc.borrow_mut::<AppPickerDelegateHostObject>(delegate);\\n\\n        if std::mem::take(&mut host_obj.prev_page) {',
+    '        let host_obj = env.objc.borrow_mut::<AppPickerDelegateHostObject>(delegate);\n\n        if std::mem::take(&mut host_obj.prev_page) {',
     '''        let host_obj = env.objc.borrow_mut::<AppPickerDelegateHostObject>(delegate);
         let quick_settings_changed =
             host_obj.scale_hack_default || host_obj.scale_hack1 ||
